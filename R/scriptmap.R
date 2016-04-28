@@ -1,7 +1,3 @@
-
-require(dplyr)
-require(ggplot2)
-
 ## Note that in pd, line1 is where the item starts, line2 is where it
 ## ends.  Hence I expect that for most simple tokens, line1 = line2,
 ## for expressions line1 may not equal line2:
@@ -118,6 +114,7 @@ condMultiFilter <- function(dfr,col,rgx,...)
 ##' @return A \code{ggplot} object.
 ##' @author Alexander Zwart (alec.zwart at csiro.au)
 ##' @export
+##' @import ggplot2
 ##'
 scriptmap <- function(file,tokenType="SYMBOL",rgx=NULL,...)
   {
