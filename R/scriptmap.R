@@ -106,7 +106,7 @@ condMultiFilter <- function(dfr,col,rgx,...)
 ##' plotted by \code{scriptmap}.  So do take extra care to check, for
 ##' example, character arguments to functions.
 ##'
-##' @title Plot locations of object references in an r script.
+##' @title Plot locations of object references in an R script.
 ##' @param file character: the path to the R script file to be
 ##' 'mapped'.
 ##' @param tokenType Choice of \code{\link{getParseData}} token type
