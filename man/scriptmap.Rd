@@ -2,9 +2,10 @@
 % Please edit documentation in R/scriptmap.R
 \name{scriptmap}
 \alias{scriptmap}
-\title{Plot locations of object references in an r script.}
+\title{Plot locations of object references in an R script.}
 \usage{
-scriptmap(file, tokenType = "SYMBOL", rgx = NULL, ...)
+scriptmap(file, tokenType = "SYMBOL", rgx = NULL, lmin = NULL,
+  lmax = NULL, sortTokens = FALSE, ...)
 }
 \arguments{
 \item{file}{character: the path to the R script file to be
@@ -16,6 +17,20 @@ to plot. Default value "SYMBOL".}
 \item{rgx}{character: a vector of regular expressions, to be used
 to filter the set of symbols to be plotted.  Default is
 \code{NULL}, implying no filtering.}
+
+\item{lmin}{integer: minimum token line number used to produce the
+plot.  This argument doesn't simply adjust the range of the plot
+(which can be done via the \pkg{ggplot2} \code{xlim} function) -
+it removes occurances of tokens having line number below
+\code{lmin} prior to sorting the data ( see the \code{sortTokens}
+argument below.}
+
+\item{lmax}{integer: maximum token line number used to produce the
+plot.}
+
+\item{sortTokens}{logical: if TRUE, the order of the tokens on the
+plot y axis is sorted by the minimum line number in which the
+token appears.  Default is FALSE.}
 
 \item{...}{other arguments to be passed to \code{\link{grepl}}.}
 }
@@ -29,6 +44,17 @@ representing R objects in an R script and plots their locations
 within the script.
 }
 \details{
+When analysing multiple reponses in a single script file, the
+workflow invariably involves a lot of copy/paste/edit'ing of code,
+and this leads to the possibility of errors or oversights in the
+editing of code.  Function \code{scriptmap} provides a graphical
+overview of where object names ('tokens') appear in a script file,
+so that names that appear out of place may be more easily noticed.
+Note that \code{scriptmap} is intended as an \emph{aid} to
+spotting name-out-of-place coding errors, but should NOT be
+regarded as a tool for definitively identifying all such errors -
+see the Caveat below.
+
 Function \code{scriptmap} uses \code{\link{parse}} and
 \code{\link{getParseData}} to identify symbols (i.e. names)
 representing R objects in an R script and plots their locations
@@ -39,23 +65,28 @@ actually containing the symbol, in a multi-line statement).  This
 limitation is a consequence of the information provided by
 \code{getParseData}.
 
-When analysing multiple reponses in a single script file, the
-workflow invariably involves a lot of copy/paste/edit'ing of code,
-and this leads to the possibility of errors/oversights in the
-editing of code.  Function \code{scriptmap} provides a simple
-overview of where object names appear in a script file, so that
-names that appear out of place may be more easily noticed.  Note
-that \code{scriptmap} is intended as an \emph{aid} to spotting
-name-out-of-place coding errors, but should NOT be regarded as a
-tool for definitively identifying all such errors!
+The option \code{sortTokens} is provided to specify that the order
+of the tokens on the y-axis is to be sorted according to the line
+number at which each token first appears in the script. Such a
+sort order may aid in spotting name-out-of-place errors. The
+default is \code{sortTokens=FALSE}.
 
-A limitation of \code{scriptmap} is that it only works with object
-names that are recognised by the parsing of the R script via
-\code{\link{parse}}.  Character strings in a script are not parsed
-for R object names by \code{\link{parse}}, so new or misspelled
-object names that appear only in character strings will not be
-plotted by \code{scriptmap}.  So do take extra care to check, for
-example, character arguments to functions.
+Arguments \code{lmin} and \code{lmax} can be specified to restrict
+the line range of tokens to be plotted.  Note that \code{lmin} and
+\code{lmax} do not directly restrict the range of the plot (which
+can be achieved by the \pkg{dplyr} \code{xlim} function). Rather,
+these arguments remove token occurrences lying outside the
+\code{lmin:lmax} range prior to sorting the tokens and
+constructing the plot.  Hence they (\code{lmin} particularly) can
+impact on the sort order used when \code{sortTokens=TRUE}.
+
+Caveat: A limitation of \code{scriptmap} is that it only works
+with object names that are recognised by the parsing of the R
+script via \code{\link{parse}}.  Character strings in a script are
+not parsed for R object names by \code{\link{parse}}, so new or
+misspelled object names that appear only in character strings will
+not be plotted by \code{scriptmap}.  So do take extra care to
+check, for example, character arguments to functions.
 }
 \author{
 Alexander Zwart (alec.zwart at csiro.au)

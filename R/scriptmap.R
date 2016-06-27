@@ -1,6 +1,10 @@
 
-require(dplyr)
-require(ggplot2)
+## AW notes that one can get rid of the NOTE's concerning "no visible
+## binding for global variable' using functions filter_, arrange_, etc
+## in dplyr, and using aes_string instead of aes in ggplot2
+
+##require(dplyr)
+##require(ggplot2)
 
 ## Note that in pd, line1 is where the item starts, line2 is where it
 ## ends.  Hence I expect that for most simple tokens, line1 = line2,
@@ -71,12 +75,34 @@ condMultiFilter <- function(dfr,col,rgx,...)
 ## some situations where mapping 'em would be useful...
 
 
+## TODO need to describe the tokenType argument in more detail below.
+
+## TODO need to describe the rgx argument in more detail below.
+
+## TODO Add a 'tokens' argument for explicit specification of tokens
+## to plot?  A more specific alternative to rgx?  rgx and tokens
+## cannot both be specified at the same time?
+
+## TODO check on use of backslashes in rgx expressions - do I need to
+## double backslash?  If so, document this
+
 ## Function scriptmap
 ##
 ##' Function \code{scriptmap} uses \code{\link{parse}} and
 ##' \code{\link{getParseData}} to identify symbols (i.e. names)
 ##' representing R objects in an R script and plots their locations
 ##' within the script.
+##'
+##' When analysing multiple reponses in a single script file, the
+##' workflow invariably involves a lot of copy/paste/edit'ing of code,
+##' and this leads to the possibility of errors or oversights in the
+##' editing of code.  Function \code{scriptmap} provides a graphical
+##' overview of where object names ('tokens') appear in a script file,
+##' so that names that appear out of place may be more easily noticed.
+##' Note that \code{scriptmap} is intended as an \emph{aid} to
+##' spotting name-out-of-place coding errors, but should NOT be
+##' regarded as a tool for definitively identifying all such errors -
+##' see the Caveat below.
 ##'
 ##' Function \code{scriptmap} uses \code{\link{parse}} and
 ##' \code{\link{getParseData}} to identify symbols (i.e. names)
@@ -88,23 +114,28 @@ condMultiFilter <- function(dfr,col,rgx,...)
 ##' limitation is a consequence of the information provided by
 ##' \code{getParseData}.
 ##'
-##' When analysing multiple reponses in a single script file, the
-##' workflow invariably involves a lot of copy/paste/edit'ing of code,
-##' and this leads to the possibility of errors/oversights in the
-##' editing of code.  Function \code{scriptmap} provides a simple
-##' overview of where object names appear in a script file, so that
-##' names that appear out of place may be more easily noticed.  Note
-##' that \code{scriptmap} is intended as an \emph{aid} to spotting
-##' name-out-of-place coding errors, but should NOT be regarded as a
-##' tool for definitively identifying all such errors!
+##' The option \code{sortTokens} is provided to specify that the order
+##' of the tokens on the y-axis is to be sorted according to the line
+##' number at which each token first appears in the script. Such a
+##' sort order may aid in spotting name-out-of-place errors. The
+##' default is \code{sortTokens=FALSE}.
 ##'
-##' A limitation of \code{scriptmap} is that it only works with object
-##' names that are recognised by the parsing of the R script via
-##' \code{\link{parse}}.  Character strings in a script are not parsed
-##' for R object names by \code{\link{parse}}, so new or misspelled
-##' object names that appear only in character strings will not be
-##' plotted by \code{scriptmap}.  So do take extra care to check, for
-##' example, character arguments to functions.
+##' Arguments \code{lmin} and \code{lmax} can be specified to restrict
+##' the line range of tokens to be plotted.  Note that \code{lmin} and
+##' \code{lmax} do not directly restrict the range of the plot (which
+##' can be achieved by the \pkg{dplyr} \code{xlim} function). Rather,
+##' these arguments remove token occurrences lying outside the
+##' \code{lmin:lmax} range prior to sorting the tokens and
+##' constructing the plot.  Hence they (\code{lmin} particularly) can
+##' impact on the sort order used when \code{sortTokens=TRUE}.
+##'
+##' Caveat: A limitation of \code{scriptmap} is that it only works
+##' with object names that are recognised by the parsing of the R
+##' script via \code{\link{parse}}.  Character strings in a script are
+##' not parsed for R object names by \code{\link{parse}}, so new or
+##' misspelled object names that appear only in character strings will
+##' not be plotted by \code{scriptmap}.  So do take extra care to
+##' check, for example, character arguments to functions.
 ##'
 ##' @title Plot locations of object references in an R script.
 ##' @param file character: the path to the R script file to be
@@ -114,12 +145,24 @@ condMultiFilter <- function(dfr,col,rgx,...)
 ##' @param rgx character: a vector of regular expressions, to be used
 ##' to filter the set of symbols to be plotted.  Default is
 ##' \code{NULL}, implying no filtering.
+##' @param lmin integer: minimum token line number used to produce the
+##' plot.  This argument doesn't simply adjust the range of the plot
+##' (which can be done via the \pkg{ggplot2} \code{xlim} function) -
+##' it removes occurances of tokens having line number below
+##' \code{lmin} prior to sorting the data ( see the \code{sortTokens}
+##' argument below.
+##' @param lmax integer: maximum token line number used to produce the
+##' plot.
+##' @param sortTokens logical: if TRUE, the order of the tokens on the
+##' plot y axis is sorted by the minimum line number in which the
+##' token appears.  Default is FALSE.
 ##' @param ... other arguments to be passed to \code{\link{grepl}}.
 ##' @return A \code{ggplot} object.
 ##' @author Alexander Zwart (alec.zwart at csiro.au)
 ##' @export
 ##'
-scriptmap <- function(file,tokenType="SYMBOL",rgx=NULL,...)
+scriptmap <- function(file,tokenType="SYMBOL",rgx=NULL,
+                      lmin=NULL,lmax=NULL,sortTokens=FALSE,...)
   {
     stopifnot(is.character(file))
     stopifnot(length(file)==1)
@@ -134,14 +177,29 @@ scriptmap <- function(file,tokenType="SYMBOL",rgx=NULL,...)
     ##
     pd  <- dplyr::filter(pd,token %in% tokenType)
     pd <- condMultiFilter(pd,col="text",rgx=rgx)
+    if (!is.null(lmin))
+      {
+        stopifnot(length(lmin)==1)
+        stopifnot(is.numeric(lmin) & lmin > 0 & round(lmin) == lmin)
+        pd <- dplyr::filter(pd,line1 >= lmin)
+      }
+    if (!is.null(lmax))
+      {
+        stopifnot(length(lmax)==1)
+        stopifnot(is.numeric(lmax) & lmax > 0 & round(lmax) == lmax)
+        pd <- dplyr::filter(pd,line1 <= lmax)
+      }
+    if (sortTokens)
+      {    ## Sorting should be done AFTER lmin, lmax are applied.
+        dd <- dplyr::group_by(pd,text)
+        dd <- dplyr::summarize(dd,
+                               lrmin = min(line1),
+                               lrmax = max(line1))
+        dd <- dplyr::arrange(dd,lrmin,lrmax)
+        pd$text <- factor(pd$text, levels=dd$text)
+      }
     ggplot(pd,aes(x=line1,y=text)) + geom_point() +
      xlab("Script line number") + ylab("")
-    ## ## Use of piping operator is not recommended within packages.
-    ## pd %>%
-    ##  dplyr::filter(token %in% tokenType) %>%
-    ##   condMultiFilter(col="text",rgx=rgx) %>%
-    ##    ggplot(.,aes(x=line1,y=text)) + geom_point() +
-    ##     xlab("Script line number")  + ylab("")
   }
 
 ## scriptmap("../../devel/BaseModels.R",rgx=NULL)
